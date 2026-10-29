@@ -950,3 +950,8 @@ dialog a {
 .status.offline:before {
   background: var(--danger);
 }
+
+#jobsList {
+  max-height: 340px;
+  overflow: auto;
+}

@@ -392,7 +392,7 @@ if __name__ == "__main__":
     parser.add_argument("--directory", default=str(BASE.parents[1] / "ultralytics/assets"))
     parser.add_argument("--no-browser", action="store_true")
     ARGS = parser.parse_args()
-    for path in sorted(RUNTIME.glob("*/job.json"))[-100:]:
+    for path in sorted(RUNTIME.glob("*/job.json"), key=lambda p: p.stat().st_mtime)[-100:]:
         job = json.loads(path.read_text(encoding="utf-8"))
         JOBS[job["id"]] = job
     server = ThreadingHTTPServer(("127.0.0.1", ARGS.port), Handler)
