@@ -491,7 +491,6 @@ function renderJobs() {
   $("jobSummary").textContent = running ? "任务进行中 · 可以继续浏览图片" : "结果自动保存到本地";
   $("jobsList").innerHTML =
     state.jobs
-      .slice(0, 8)
       .map(
         (j) =>
           `<div class="job ${j.status}"><div class="job-title">${{ visual: "视觉提示", text: "文本提示", free: "无提示" }[j.mode]} · ${j.done} / ${j.total}<small>${esc(j.id)}</small></div><div class="job-progress"><p title="${esc(j.message)}">${esc(j.message)}</p><progress max="${j.total}" value="${j.done}"></progress>${j.status === "error" ? `<details><summary>错误详情</summary><pre>${esc(j.message)}</pre></details>` : ""}</div><div class="job-actions"><button data-view-job="${j.id}">${state.job === j.id ? "正在查看" : "查看结果"}</button>${["queued", "running"].includes(j.status) ? `<button data-cancel="${j.id}">${j.cancel ? "正在停止…" : "取消"}</button>` : `<a href="/api/download?job=${j.id}" download="yoloe-${j.id}.zip">导出 ZIP</a>`}</div></div>`,
