@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>YOLOE · 本地实验台</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M4 12V4h8M20 4h8v8M28 20v8h-8M12 28H4v-8" />
+          <circle cx="16" cy="16" r="5" /></svg
+        ><strong>YOLOE</strong><span>本地实验台</span>
+      </div>
+      <div class="header-end">
+        <span id="deviceBadge" class="status">正在连接</span><button id="helpBtn" class="quiet">使用指南</button>
+      </div>
+    </header>
+    <div class="directory-bar">
+      <label for="directory">图片目录</label
+      ><input id="directory" placeholder="粘贴本地目录路径，例如 D:\images" /><label class="check"
+        ><input type="checkbox" id="recursive" checked />含子目录</label
+      ><button id="pickDir">浏览…</button><button id="openDir" class="primary">打开目录</button>
+    </div>
+    <main>
+      <aside class="library">
+        <div class="section-title">
+          <h2>图片库</h2>
+          <span id="imageCount">0 张</span>
+        </div>
+        <input id="search" type="search" placeholder="搜索文件名…" aria-label="搜索图片" />
+        <div id="imageList" class="image-list">
+          <div class="empty">打开一个图片目录<br /><small>图片始终保留在本机</small></div>
+        </div>
+        <div class="pagination">
+          <button id="prevPage" aria-label="上一页">上一页</button><span id="pageLabel">0 / 0</span
+          ><button id="nextPage" aria-label="下一页">下一页</button>
+        </div>
+      </aside>
+      <section class="workspace">
+        <div class="canvas-header">
+          <div>
+            <h1 id="imageName">选择一张图片，开始探索</h1>
+            <span id="imageMeta">框选一个示例，寻找更多同类目标</span>
+          </div>
+          <div class="canvas-tabs">
+            <button id="targetTab" class="active">待测图片</button><button id="referenceTab">参考图标注</button>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="tools" role="group" aria-label="标注工具">
+            <button data-tool="box" title="拖动绘制矩形框" class="active">框选</button
+            ><button data-tool="point" title="点击生成圆形区域掩码">点选区域</button
+            ><button data-tool="brush" title="按住鼠标涂抹目标区域">画笔</button
+            ><button data-tool="polygon" title="连续点击，双击完成多边形">多边形</button
+            ><button id="undo" title="Ctrl+Z 撤销">撤销</button><button id="clear">清空</button>
+          </div>
+          <div class="zoom">
+            <button id="zoomOut" aria-label="缩小">−</button><button id="zoomFit">适应</button
+            ><button id="zoomIn" aria-label="放大">＋</button>
+          </div>
+        </div>
+        <div id="viewport" class="viewport">
+          <div id="canvasEmpty" class="canvas-empty">
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <path d="M12 24V12h12M40 12h12v12M52 40v12H40M24 52H12V40" />
+              <circle cx="32" cy="32" r="9" />
+            </svg>
+            <h2>把目标交给视觉</h2>
+            <p>打开目录，选择图片。<br />用文字描述，或在图上标一个示例。</p>
+          </div>
+          <div id="imageWrap" hidden>
+            <img id="mainImage" alt="当前工作图片" draggable="false" /><svg
+              id="overlay"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-label="视觉提示标注画布"
+            ></svg>
+          </div>
+        </div>
+        <div class="canvas-footer">
+          <span id="canvasHint">视觉提示支持同图与跨图检测</span>
+          <div>
+            <label><input type="checkbox" id="showBoxes" checked />检测框</label
+            ><label><input type="checkbox" id="showMasks" checked />掩码</label
+            ><label><input type="checkbox" id="showPrompts" checked />提示</label>
+          </div>
+        </div>
+        <section class="result-section">
+          <div class="section-title">
+            <h2>检测结果 <span id="resultCount"></span></h2>
+            <span id="resultTime">尚未推理</span>
+          </div>
+          <div id="resultList" class="result-list"><p class="muted">推理完成后，在这里查看类别、置信度与耗时。</p></div>
+        </section>
+      </section>
+      <aside class="inspector">
+        <div class="section-title">
+          <h2>推理设置</h2>
+          <span class="local-tag">本地运行</span>
+        </div>
+        <div class="mode-tabs" role="tablist" aria-label="提示模式">
+          <button data-mode="visual" class="active" role="tab" aria-selected="true">视觉</button
+          ><button data-mode="text" role="tab" aria-selected="false">文本</button
+          ><button data-mode="free" role="tab" aria-selected="false">无提示</button>
+        </div>
+        <div class="inspector-scroll">
+          <div id="visualPanel" class="mode-panel">
+            <div class="field-heading">
+              <h3>参考图</h3>
+              <button id="pinReference" class="text-button">使用当前图片</button>
+            </div>
+            <div id="referenceCard" class="reference-card"><p>选择图片后，点击“使用当前图片”</p></div>
+            <div class="field-heading">
+              <h3>目标类别</h3>
+              <button id="addClass" class="text-button">添加类别</button>
+            </div>
+            <div id="classes"></div>
+            <label class="field"
+              >区域半径（原图像素）
+              <div class="range-row">
+                <input id="radius" type="range" min="4" max="200" value="24" /><output id="radiusValue">24</output>
+              </div></label
+            >
+            <p id="toolHint" class="hint">在参考图上拖动框选目标。相同类别可标多个示例。</p>
+            <div id="shapeList" class="shape-list"></div>
+            <div class="profile-actions">
+              <button id="savePrompt">保存提示</button><button id="loadPrompt">载入提示</button
+              ><input type="file" id="promptFile" accept=".json" hidden />
+            </div>
+          </div>
+          <div id="textPanel" class="mode-panel" hidden>
+            <label class="field"
+              >要寻找的类别<textarea id="textClasses" rows="5" placeholder="person&#10;car&#10;fire">
+person
+car</textarea>
+            </label>
+            <p class="hint">每行一个类别，也可用逗号分隔。建议用简短英文名称；文本描述会经官方编码器生成提示。</p>
+          </div>
+          <div id="freePanel" class="mode-panel" hidden>
+            <h3>自动发现图片中的物体</h3>
+            <p class="hint">使用专用的无提示权重，在模型内置的 4,585 个类别中检测。不会使用参考图或文本提示。</p>
+          </div>
+          <div class="settings">
+            <label class="field">模型<select id="model"></select></label>
+            <div class="two-col">
+              <label class="field"
+                >计算设备<select id="device">
+                  <option value="auto">自动选择</option>
+                  <option value="0">CUDA : 0</option>
+                  <option value="cpu">CPU</option>
+                </select></label
+              ><label class="field"
+                >输入尺寸<select id="imgsz">
+                  <option>640</option>
+                  <option>960</option>
+                  <option>1280</option>
+                  <option>1536</option>
+                  <option>320</option>
+                </select></label
+              >
+            </div>
+            <label class="field"
+              >置信度阈值
+              <div class="range-row">
+                <input id="confidence" type="range" min="0.01" max="0.95" step="0.01" value="0.25" /><output
+                  id="confidenceValue"
+                  >0.25</output
+                >
+              </div></label
+            >
+            <details>
+              <summary>更多参数</summary>
+              <div class="two-col">
+                <label class="field"
+                  >IoU 阈值<input id="iou" type="number" min="0.01" max="1" step="0.05" value="0.7" /></label
+                ><label class="field"
+                  >最多检测数<input id="maxDet" type="number" min="1" max="3000" value="300"
+                /></label>
+              </div>
+              <p class="hint">IoU 阈值控制重叠框抑制；本工作台使用当前版本默认的外部 NMS 后处理。</p>
+            </details>
+          </div>
+        </div>
+        <div class="run-actions">
+          <button id="runOne" class="primary">推理当前图片</button
+          ><button id="runAll">推理整个目录 <span id="batchCount"></span></button>
+          <p class="hint">首次运行会下载所选权重；文本模式另需文本编码器。</p>
+        </div>
+      </aside>
+    </main>
+    <section class="jobs">
+      <div class="section-title">
+        <h2>任务记录</h2>
+        <span id="jobSummary">结果自动保存到本地</span>
+      </div>
+      <div id="jobsList"><p class="muted">还没有推理任务。先用一张图片验证，再批量运行。</p></div>
+    </section>
+    <div id="toast" role="status" hidden></div>
+    <dialog id="help">
+      <div class="section-title">
+        <h2>开始一次 YOLOE 实验</h2>
+        <button id="closeHelp">关闭</button>
+      </div>
+      <ol>
+        <li>打开本地图片目录，在左侧选择待测图片。</li>
+        <li>视觉模式：固定参考图，选类别，用框、区域点、画笔或多边形标注。双击结束多边形，Esc 取消未完成绘制。</li>
+        <li>点击“待测图片”，切换图片，再推理。参考图与标注不会跟随目标切换。</li>
+        <li>文本模式每行填写一个类别；无提示模式不需要标注，会自动切换到 -pf 权重。</li>
+        <li>批量任务可以取消，当前图片处理结束后停止；保留已完成结果。</li>
+        <li>导出 ZIP 包含原图路径索引、检测 JSON、归一化 YOLO 框标签、分割标签、结果图和可复用提示向量。</li>
+      </ol>
+      <p>
+        点选是圆形区域掩码，画笔是轨迹掩码，多边形是填充区域；它们通过官方底层视觉提示预测器编码，不是 SAM
+        的正负点分割。多个类别必须分别有示例。
+      </p>
+      <p>
+        这是图片推理
+        DEMO。训练、验证评测、视频跟踪、部署格式转换不在图片工作流中。检测与分割输出均来自真实模型，结果需人工复核。
+      </p>
+      <a href="https://docs.ultralytics.com/models/yoloe/" target="_blank" rel="noreferrer">YOLOE 官方文档</a> ·
+      <a href="https://docs.ultralytics.com/reference/models/yolo/yoloe/predict/" target="_blank" rel="noreferrer"
+        >视觉提示预测器 API</a
+      >
+      <p id="environment" class="hint"></p>
+    </dialog>
+    <script src="/app.js"></script>
+  </body>
+</html>
