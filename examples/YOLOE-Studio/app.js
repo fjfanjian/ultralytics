@@ -12,6 +12,8 @@ const state = {
   referenceView: false,
   page: 0,
   zoom: 1,
+  spaceHeld: false,
+  pan: null,
   jobs: [],
   job: null,
   result: null,
@@ -104,6 +106,9 @@ async function openDirectory() {
     renderLibrary();
     if (state.images.length) await selectImage(state.images[0].id);
     else {
+      state.width = 0;
+      state.height = 0;
+      endPan();
       state.referenceView = false;
       state.result = null;
       $("imageWrap").hidden = true;
@@ -131,6 +136,7 @@ async function showImage() {
   if (!item) return;
   state.draft = null;
   state.drawing = false;
+  endPan();
   const seq = ++state.loading;
   $("targetTab").classList.toggle("active", !state.referenceView);
   $("referenceTab").classList.toggle("active", state.referenceView);
@@ -158,6 +164,7 @@ async function showImage() {
   $("imageWrap").hidden = false;
   state.zoom = 1;
   resize();
+  $("viewport").scrollTo(0, 0);
   renderOverlay();
   updateHint();
 }
@@ -168,7 +175,74 @@ function resize() {
   $("imageWrap").style.width = `${state.width * scale}px`;
   $("imageWrap").style.height = `${state.height * scale}px`;
   $("zoomFit").textContent = state.zoom === 1 ? "适应" : `${Math.round(state.zoom * 100)}%`;
+  $("viewport").classList.toggle("pan-ready", state.spaceHeld && state.zoom > 1);
 }
+function setZoom(zoom, clientX, clientY) {
+  if (!state.width || state.drawing || state.pan) return;
+  const viewport = $("viewport"),
+    bounds = viewport.getBoundingClientRect();
+  clientX ??= bounds.left + viewport.clientWidth / 2;
+  clientY ??= bounds.top + viewport.clientHeight / 2;
+  const before = $("imageWrap").getBoundingClientRect();
+  const x = (clientX - before.left) / before.width,
+    y = (clientY - before.top) / before.height;
+  state.zoom = Math.max(0.25, Math.min(16, zoom));
+  resize();
+  const after = $("imageWrap").getBoundingClientRect();
+  viewport.scrollLeft += after.left + x * after.width - clientX;
+  viewport.scrollTop += after.top + y * after.height - clientY;
+}
+function endPan() {
+  const viewport = $("viewport"),
+    pointer = state.pan?.pointerId;
+  state.pan = null;
+  viewport.classList.remove("panning");
+  if (pointer !== undefined && viewport.hasPointerCapture(pointer)) viewport.releasePointerCapture(pointer);
+}
+$("viewport").addEventListener(
+  "wheel",
+  (e) => {
+    if (!state.width) return;
+    e.preventDefault();
+    const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? $("viewport").clientHeight : 1);
+    setZoom(state.zoom * Math.exp(-delta * 0.0015), e.clientX, e.clientY);
+  },
+  { passive: false },
+);
+$("viewport").addEventListener(
+  "pointerdown",
+  (e) => {
+    const viewport = $("viewport");
+    if (e.button === 0) viewport.focus({ preventScroll: true });
+    if (e.button !== 0 || !state.spaceHeld || state.zoom <= 1 || state.drawing || !state.width) return;
+    e.preventDefault();
+    e.stopPropagation();
+    state.pan = {
+      pointerId: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      left: viewport.scrollLeft,
+      top: viewport.scrollTop,
+    };
+    viewport.setPointerCapture(e.pointerId);
+    viewport.classList.add("panning");
+  },
+  true,
+);
+$("viewport").addEventListener(
+  "pointermove",
+  (e) => {
+    if (!state.pan || state.pan.pointerId !== e.pointerId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    $("viewport").scrollLeft = state.pan.left + state.pan.x - e.clientX;
+    $("viewport").scrollTop = state.pan.top + state.pan.y - e.clientY;
+  },
+  true,
+);
+["pointerup", "pointercancel", "lostpointercapture"].forEach((event) => {
+  $("viewport").addEventListener(event, () => endPan());
+});
 function setReference() {
   if (!state.current) return toast("请先选择图片");
   if (
@@ -313,7 +387,7 @@ function canDraw() {
   return true;
 }
 $("overlay").onpointerdown = (e) => {
-  if (e.button !== 0 || !canDraw()) return;
+  if (e.button !== 0 || state.spaceHeld || !canDraw()) return;
   const p = coordinate(e),
     shape = { kind: state.tool, cls: state.cls, radius: +$("radius").value, points: [p] };
   if (state.tool === "polygon") {
@@ -363,6 +437,7 @@ $("overlay").onpointercancel = () => {
 };
 $("overlay").ondblclick = (e) => {
   e.preventDefault();
+  if (state.spaceHeld) return;
   if (state.tool === "polygon" && state.draft?.points.length >= 3) {
     state.shapes.push(state.draft);
     state.draft = null;
@@ -387,13 +462,14 @@ function updateHint() {
 }
 document.querySelectorAll("[data-tool]").forEach(
   (b) =>
-    (b.onclick = () => {
+    (b.onclick = (e) => {
       state.tool = b.dataset.tool;
       state.draft = null;
       state.drawing = false;
       document.querySelectorAll("[data-tool]").forEach((x) => x.classList.toggle("active", x === b));
       updateHint();
       renderOverlay();
+      if (e.detail) $("viewport").focus({ preventScroll: true });
     }),
 );
 document.querySelectorAll("[data-mode]").forEach(
@@ -646,17 +722,24 @@ $("clear").onclick = () => {
   renderShapes();
   renderOverlay();
 };
-$("zoomIn").onclick = () => {
-  state.zoom = Math.min(8, state.zoom * 1.25);
-  resize();
+$("zoomIn").onclick = (e) => {
+  setZoom(state.zoom * 1.25);
+  if (e.detail) $("viewport").focus({ preventScroll: true });
 };
-$("zoomOut").onclick = () => {
-  state.zoom = Math.max(0.25, state.zoom / 1.25);
-  resize();
+$("zoomOut").onclick = (e) => {
+  setZoom(state.zoom / 1.25);
+  if (e.detail) $("viewport").focus({ preventScroll: true });
 };
-$("zoomFit").onclick = () => {
-  state.zoom = 1;
-  resize();
+$("zoomFit").onclick = (e) => {
+  setZoom(1);
+  $("viewport").scrollTo(0, 0);
+  if (e.detail) $("viewport").focus({ preventScroll: true });
+};
+$("focusCanvas").onclick = (e) => {
+  const focused = document.body.classList.toggle("canvas-focus");
+  $("focusCanvas").textContent = focused ? "退出专注" : "专注画布";
+  $("focusCanvas").setAttribute("aria-pressed", String(focused));
+  if (e.detail) $("viewport").focus({ preventScroll: true });
 };
 $("radius").oninput = () => ($("radiusValue").value = $("radius").value);
 $("confidence").oninput = () => ($("confidenceValue").value = (+$("confidence").value).toFixed(2));
@@ -666,7 +749,14 @@ $("runAll").onclick = safe(() => run(true));
 $("helpBtn").onclick = () => $("help").showModal();
 $("closeHelp").onclick = () => $("help").close();
 document.addEventListener("keydown", (e) => {
-  if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) || $("help").open) return;
+  if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) || e.target.isContentEditable || $("help").open)
+    return;
+  if (e.code === "Space") {
+    if (e.target.closest('button, summary, a[href], [role="button"]')) return;
+    e.preventDefault();
+    state.spaceHeld = true;
+    $("viewport").classList.toggle("pan-ready", state.zoom > 1);
+  }
   if (e.key === "Escape") {
     state.draft = null;
     state.drawing = false;
@@ -680,6 +770,17 @@ document.addEventListener("keydown", (e) => {
     const i = state.images.findIndex((x) => x.id === state.current.id) + (e.key === "ArrowRight" ? 1 : -1);
     if (state.images[i]) safe(() => selectImage(state.images[i].id))();
   }
+});
+document.addEventListener("keyup", (e) => {
+  if (e.code !== "Space") return;
+  state.spaceHeld = false;
+  $("viewport").classList.remove("pan-ready");
+  endPan();
+});
+window.addEventListener("blur", () => {
+  state.spaceHeld = false;
+  $("viewport").classList.remove("pan-ready");
+  endPan();
 });
 new ResizeObserver(resize).observe($("viewport"));
 safe(async () => {

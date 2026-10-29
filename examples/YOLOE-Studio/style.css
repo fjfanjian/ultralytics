@@ -133,7 +133,7 @@ a {
   text-underline-offset: 4px;
 }
 header {
-  height: 64px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -177,7 +177,7 @@ header {
   margin-right: 7px;
 }
 .directory-bar {
-  padding: 13px 24px;
+  padding: 10px 20px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -197,9 +197,9 @@ header {
 }
 main {
   display: grid;
-  grid-template-columns: 230px minmax(300px, 1fr) 300px;
-  min-height: 740px;
-  height: calc(100vh - 260px);
+  grid-template-columns: 200px minmax(300px, 1fr) 280px;
+  min-height: 600px;
+  height: calc(100dvh - 116px);
 }
 aside {
   background: var(--panel);
@@ -298,7 +298,7 @@ aside {
   min-height: 0;
 }
 .canvas-header {
-  padding: 17px 20px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -371,6 +371,7 @@ aside {
   margin: 0 14px;
   border-radius: 8px;
   overscroll-behavior: contain;
+  touch-action: none;
 }
 .canvas-empty {
   text-align: center;
@@ -423,7 +424,7 @@ aside {
   justify-content: space-between;
   gap: 10px;
   align-items: center;
-  padding: 13px 18px;
+  padding: 10px 16px;
   font-size: 12px;
   color: var(--muted);
 }
@@ -433,8 +434,9 @@ aside {
   white-space: nowrap;
 }
 .result-section {
-  height: 150px;
-  padding: 15px 20px;
+  height: 96px;
+  flex-shrink: 0;
+  padding: 10px 16px;
   border-top: 1px solid var(--line);
   overflow: auto;
 }
@@ -748,7 +750,7 @@ dialog a {
 }
 @media (min-width: 1600px) {
   main {
-    grid-template-columns: 260px minmax(300px, 1fr) 330px;
+    grid-template-columns: 220px minmax(300px, 1fr) 300px;
   }
   .viewport {
     min-height: 400px;
@@ -859,8 +861,8 @@ dialog a {
     flex-wrap: wrap;
   }
   .viewport {
-    min-height: 320px;
-    height: 320px;
+    min-height: 360px;
+    height: 48dvh;
     flex: none;
   }
   .canvas-footer {
@@ -875,7 +877,7 @@ dialog a {
     max-width: 250px;
   }
   .result-section {
-    height: 130px;
+    height: 96px;
   }
   .job {
     grid-template-columns: 1fr;
@@ -954,4 +956,31 @@ dialog a {
 #jobsList {
   max-height: 340px;
   overflow: auto;
+}
+
+.viewport.pan-ready,
+.viewport.pan-ready #overlay {
+  cursor: grab;
+}
+.viewport.panning,
+.viewport.panning #overlay {
+  cursor: grabbing;
+  user-select: none;
+}
+.canvas-footer .canvas-guidance {
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  white-space: normal;
+}
+body.canvas-focus main {
+  grid-template-columns: minmax(0, 1fr);
+}
+body.canvas-focus .library,
+body.canvas-focus .inspector,
+body.canvas-focus .result-section {
+  display: none;
+}
+#focusCanvas[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--soft);
 }

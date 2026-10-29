@@ -58,11 +58,12 @@
             ><button id="undo" title="Ctrl+Z 撤销">撤销</button><button id="clear">清空</button>
           </div>
           <div class="zoom">
+            <button id="focusCanvas" aria-pressed="false">专注画布</button>
             <button id="zoomOut" aria-label="缩小">−</button><button id="zoomFit">适应</button
             ><button id="zoomIn" aria-label="放大">＋</button>
           </div>
         </div>
-        <div id="viewport" class="viewport">
+        <div id="viewport" class="viewport" tabindex="0" aria-label="图片画布，滚轮缩放，按住空格拖动">
           <div id="canvasEmpty" class="canvas-empty">
             <svg viewBox="0 0 64 64" aria-hidden="true">
               <path d="M12 24V12h12M40 12h12v12M52 40v12H40M24 52H12V40" />
@@ -80,7 +81,9 @@
           </div>
         </div>
         <div class="canvas-footer">
-          <span id="canvasHint">视觉提示支持同图与跨图检测</span>
+          <div class="canvas-guidance">
+            <span id="canvasHint">视觉提示支持同图与跨图检测</span><span>滚轮缩放 · 空格拖动</span>
+          </div>
           <div>
             <label><input type="checkbox" id="showBoxes" checked />检测框</label
             ><label><input type="checkbox" id="showMasks" checked />掩码</label
